@@ -65,7 +65,7 @@ async function ensureCase(userId: string, email: string | undefined) {
       reference: 'AX-29831',
       entryType: 'Axiom batch',
       description: 'Cross-ledger recovery allocation',
-      amount: '186400.00',
+      amount: '0.00',
       status: 'Cleared',
     },
     {
@@ -73,7 +73,7 @@ async function ensureCase(userId: string, email: string | undefined) {
       reference: 'LR-77402',
       entryType: 'Liquidity release',
       description: 'Affiliate reserve release',
-      amount: '72400.00',
+      amount: '0.00',
       status: 'Authorized',
     },
     {
@@ -81,7 +81,7 @@ async function ensureCase(userId: string, email: string | undefined) {
       reference: 'HP-10487',
       entryType: 'Hardship credit',
       description: 'Protected hardship provision',
-      amount: '28400.00',
+      amount: '0.00',
       status: 'Provisioned',
     },
   ])
