@@ -49,11 +49,11 @@ async function ensureCase(userId: string, email: string | undefined) {
       caseNumber: CASE_NUMBER,
       clientName: email?.split('@')[0]?.replace(/[._-]/g, ' ') || 'Protected client',
       desk: 'London Recovery Desk · LDN-04',
-      recoveryProfitBalance: '827450.00',
-      recoveryAffiliateBalance: '314820.00',
-      totalAssetsRecovery: '2784360.00',
-      hardshipCredits: '85640.00',
-      syncProgress: 72,
+      recoveryProfitBalance: '0.00',
+      recoveryAffiliateBalance: '0.00',
+      totalAssetsRecovery: '0.00',
+      hardshipCredits: '0.00',
+      syncProgress: '0.00',
     })
     .returning()
 
@@ -140,7 +140,7 @@ async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
 
   if (action.type === 'provision') {
     if (!Number.isFinite(action.amount) || action.amount < 1000 || action.amount > 500000) {
-      throw new Error('Provision amount must be between £1,000 and £500,000')
+      throw new Error('Provision amount must be between $1,000 and $500,000')
     }
     if (!['profit', 'affiliate', 'hardship'].includes(action.target)) {
       throw new Error('A valid provision destination is required')
@@ -183,7 +183,7 @@ async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
     }
   } else if (action.type === 'release') {
     if (!Number.isFinite(action.amount) || action.amount < 1000) {
-      throw new Error('Release amount must be at least £1,000')
+      throw new Error('Release amount must be at least $1,000')
     }
     if (action.amount > Number(caseRecord.recoveryAffiliateBalance)) {
       throw new Error('Release exceeds the available affiliate balance')
@@ -216,7 +216,7 @@ async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
     }
   } else if (action.type === 'batch') {
     if (!Number.isFinite(action.amount) || action.amount < 5000 || action.amount > 1000000) {
-      throw new Error('Batch amount must be between £5,000 and £1,000,000')
+      throw new Error('Batch amount must be between $5,000 and $1,000,000')
     }
     changes.recoveryProfitBalance = toMoney(
       Number(caseRecord.recoveryProfitBalance) + action.amount * 0.32,
