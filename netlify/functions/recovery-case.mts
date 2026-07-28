@@ -114,22 +114,31 @@ async function ensureCase(userId: string, email: string | undefined) {
 }
 
 async function serializeCase(caseRecord: RecoveryCase) {
-  const [ledger, events] = await Promise.all([
-    db
-      .select()
-      .from(ledgerEntries)
-      .where(eq(ledgerEntries.caseId, caseRecord.id))
-      .orderBy(desc(ledgerEntries.createdAt))
-      .limit(8),
-    db
-      .select()
-      .from(workflowEvents)
-      .where(eq(workflowEvents.caseId, caseRecord.id))
-      .orderBy(desc(workflowEvents.createdAt))
-      .limit(8),
-  ])
+  const entries = await db
+    .select()
+    .from(ledgerEntries)
+    .where(eq(ledgerEntries.caseId, caseRecord.id))
+    .orderBy(desc(ledgerEntries.createdAt))
+    .limit(20)
 
-  return { case: caseRecord, ledger, events }
+  const events = await db
+    .select()
+    .from(workflowEvents)
+    .where(eq(workflowEvents.caseId, caseRecord.id))
+    .orderBy(desc(workflowEvents.createdAt))
+    .limit(20)
+
+  return {
+    case: {
+      ...caseRecord,
+      recoveryProfitBalance: toMoney(caseRecord.recoveryProfitBalance),
+      recoveryAffiliateBalance: toMoney(caseRecord.recoveryAffiliateBalance),
+      totalAssetsRecovery: toMoney(caseRecord.totalAssetsRecovery),
+      hardshipCredits: toMoney(caseRecord.hardshipCredits),
+    },
+    ledger: entries,
+    events,
+  }
 }
 
 async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
@@ -141,9 +150,6 @@ async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
   if (action.type === 'provision') {
     if (!Number.isFinite(action.amount) || action.amount < 1000 || action.amount > 500000) {
       throw new Error('Provision amount must be between $1,000 and $500,000')
-    }
-    if (!['profit', 'affiliate', 'hardship'].includes(action.target)) {
-      throw new Error('A valid provision destination is required')
     }
 
     const labels = {
@@ -194,11 +200,11 @@ async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
     changes.totalAssetsRecovery = toMoney(
       Number(caseRecord.totalAssetsRecovery) + action.amount,
     )
-    changes.syncProgress = Math.min(100, caseRecord.syncProgress + 4)
-    if (changes.syncProgress === 100) {
-      changes.synchronizationStatus = 'Final synchronization complete'
-      changes.assetStatus = 'Release eligible'
-    }
+    
+    const currentProgress = Number(caseRecord.syncProgress) || 0
+    const nextProgress = Math.min(100, currentProgress + 4)
+    changes.syncProgress = toMoney(nextProgress)
+
     ledgerEntry = {
       caseId: caseRecord.id,
       reference: makeReference('LR'),
@@ -224,12 +230,11 @@ async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
     changes.totalAssetsRecovery = toMoney(
       Number(caseRecord.totalAssetsRecovery) + action.amount,
     )
-    changes.batchStatus = 'Cleared'
-    changes.syncProgress = Math.min(100, caseRecord.syncProgress + 9)
-    if (changes.syncProgress === 100) {
-      changes.synchronizationStatus = 'Final synchronization complete'
-      changes.assetStatus = 'Release eligible'
-    }
+
+    const currentProgress = Number(caseRecord.syncProgress) || 0
+    const nextProgress = Math.min(100, currentProgress + 9)
+    changes.syncProgress = toMoney(nextProgress)
+
     ledgerEntry = {
       caseId: caseRecord.id,
       reference: makeReference('AX'),
@@ -246,20 +251,19 @@ async function applyAction(caseRecord: RecoveryCase, action: CaseAction) {
       status: 'Complete',
     }
   } else {
-    const nextProgress = Math.min(100, caseRecord.syncProgress + 8)
-    changes.syncProgress = nextProgress
-    changes.synchronizationStatus =
-      nextProgress === 100 ? 'Final synchronization complete' : 'Reconciliation active'
-    changes.assetStatus = nextProgress === 100 ? 'Release eligible' : caseRecord.assetStatus
+    const currentProgress = Number(caseRecord.syncProgress) || 0
+    const nextProgress = Math.min(100, currentProgress + 8)
+    changes.syncProgress = toMoney(nextProgress)
+    
     event = {
       caseId: caseRecord.id,
       eventType: 'reconciliation',
-      title: nextProgress === 100 ? 'Final synchronization sealed' : 'Synchronization cycle completed',
+      title: nextProgress >= 100 ? 'Final synchronization sealed' : 'Synchronization cycle completed',
       detail:
-        nextProgress === 100
+        nextProgress >= 100
           ? 'All modeled ledgers reached the controlled release threshold.'
           : 'The latest correspondent ledger cycle completed successfully.',
-      status: nextProgress === 100 ? 'Complete' : 'In progress',
+      status: nextProgress >= 100 ? 'Complete' : 'In progress',
     }
   }
 
