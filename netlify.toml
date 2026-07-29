@@ -7,3 +7,9 @@
   command = "pnpm run dev:vite"
   targetPort = 3000
   port = 8889
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true
