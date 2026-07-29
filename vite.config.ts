@@ -5,16 +5,21 @@ import viteTsConfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
 import netlify from '@netlify/vite-plugin-tanstack-start'
 
+const isNetlify = !!process.env.NETLIFY
+
 const config = defineConfig({
   plugins: [
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
     tailwindcss(),
-    netlify(),
+    ...(isNetlify ? [netlify()] : []),
     tanstackStart(),
     viteReact(),
   ],
+  build: {
+    outDir: 'dist/client',
+  },
 })
 
 export default config
